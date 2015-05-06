@@ -54,13 +54,16 @@ function PANEL:Init( )
 	self:Center( )
 	self:SetTitle( "Expiration" )
 	
-	local info = vgui.Create( "DInfoPanel", self )
+	self.scroll = vgui.Create( "DScrollPanel", self )
+	self.scroll:Dock( FILL )
+	
+	local info = vgui.Create( "DInfoPanel", self.scroll )
 	info:Dock( TOP )
 		info:SetInfo( "Expiration", 
 [[You can use this to make it possible to rent items instead of purchasing them. You can set prices for different timespans. Once the user purchased the item the time counts down. Once it reaches zero the item is removed from the player.]] )
 	info:DockMargin( 10, 10, 10, 5 )
 	
-	local label = vgui.Create( "DLabel", self )
+	local label = vgui.Create( "DLabel", self.scroll )
 	label:SetText( "Item Price" )
 	label:SetColor( color_white )
 	label:SetFont( self:GetSkin( ).TabFont )
@@ -68,7 +71,7 @@ function PANEL:Init( )
 	label:DockMargin( 10, 10, 10, 5 )
 	label:Dock( TOP )
 	
-	self.itemPriceInfo = vgui.Create( "DSplitPanel", self )
+	self.itemPriceInfo = vgui.Create( "DSplitPanel", self.scroll )
 	self.itemPriceInfo:Dock( TOP )
 	self.itemPriceInfo:SetPadding( 5, 5, 5, 5 )
 	self.itemPriceInfo:SetTall( 20 + 10 )
@@ -99,9 +102,9 @@ function PANEL:Init( )
 	right.label:SetFont( self:GetSkin( ).fontName )
 	right.label:Dock( FILL )
 	right.label:DockMargin( 5, 0, 0, 0 )
-	self.premiumPointsPrice = left.label
+	self.premiumPointsPrice = right.label
 	
-	local label = vgui.Create( "DLabel", self )
+	local label = vgui.Create( "DLabel", self.scroll )
 	label:SetText( "Expiration Prices" )
 	label:SetColor( color_white )
 	label:SetFont( self:GetSkin( ).TabFont )
@@ -109,7 +112,15 @@ function PANEL:Init( )
 	label:DockMargin( 10, 10, 10, 5 )
 	label:Dock( TOP )
 	
-	self.listView = vgui.Create( "DListView", self )
+	self.autoInfo = vgui.Create( "DInfoPanel", self.scroll )
+	self.autoInfo:Dock( TOP )
+	self.autoInfo:SetSmall( true )
+	self.autoInfo:SetInfo( "Expiration", 
+[[Because the item did not have any expiration configured set we filled the table with recommended values. To discard them close the window throught the X in the top right corner.]] )
+	self.autoInfo:DockMargin( 10, 10, 10, 5 )
+	self.autoInfo:SetVisible( false )
+	
+	self.listView = vgui.Create( "DListView", self.scroll )
 	self.listView:Dock( TOP )
 	self.listView:DockMargin( 10, 5, 10, 5 )
 	self.listView:AddColumn( "Time Period" )
@@ -137,13 +148,18 @@ function PANEL:Init( )
 			premiumPoints = premiumPoints
 		}
 	end
+	function self.listView:AddLine( ... )
+		local line = DListView.AddLine( self, ... )
+		line.updateTimespan = updateLine
+		return line
+	end
 	function self.listView.OnRowRightClick( listView, lineid, line )
 		local menu = DermaMenu( self )
 		menu:AddOption( "Edit", function( )
 			local frame = vgui.Create( "DExpiryMenu_SelectTimespan" )
 			frame:MakePopup( )
 			function frame.OnSave( frame, timespan, points, premiumPoints )
-				updateLine( line, timespan, points, premiumPoints )
+				line:updateTimespan( timespan, points, premiumPoints )
 			end
 		end )
 		menu:AddOption( "Remove", function( )
@@ -157,7 +173,7 @@ function PANEL:Init( )
 		self:SetTall( math.Clamp( 100, 50, #self:GetLines( ) * 20 + 20 ) )
 	end
 	
-	self.addBtn = vgui.Create( "DButton", self )
+	self.addBtn = vgui.Create( "DButton", self.scroll )
 	self.addBtn:SetText( "Add" )
 	self.addBtn:DockMargin( 10, 5, 10, 5 )
 	self.addBtn:SetImage( "pointshop2/plus24.png" )
@@ -169,18 +185,19 @@ function PANEL:Init( )
 		frame:MakePopup( )
 		function frame.OnSave( frame, timespan, points, premiumPoints )
 			local line = self.listView:AddLine( )
-			updateLine( line, timespan, points, premiumPoints )
+			line:updateTimespan( timespan, points, premiumPoints )
 		end
+		frame:SetBasePrice( self.itemClass.Price.points, self.itemClass.Price.premiumPoints )
 	end
 	
-	self.allowPermanent = vgui.Create( "DCheckBoxLabel", self )
+	self.allowPermanent = vgui.Create( "DCheckBoxLabel", self.scroll )
 	self.allowPermanent:Dock( TOP )
 	self.allowPermanent:SetText( "Allow permanent Purchase" )
 	self.allowPermanent:SetChecked( true )
 	self.allowPermanent:DockMargin( 10, 5, 10, 5 )
 	self.allowPermanent:SetTooltip( "Allow to purchase the item normally, too" )
 	
-	self.saveButton = vgui.Create( "DButton", self )
+	self.saveButton = vgui.Create( "DButton", self.scroll )
 	self.saveButton:SetText( "Save" )
 	self.saveButton:SetSize( 80, 25 )
 	self.saveButton:Dock( TOP )
@@ -196,35 +213,40 @@ function PANEL:SetItemClass( itemClass )
 	self.pointsPrice:SetText( self.itemClass.Price.points or " - " )
 	self.premiumPointsPrice:SetText( self.itemClass.Price.premiumPoints or " - " )
 	
-	local function mul( timeSpan )
-		return 1
+	if not itemClass.Expiration then
+		self.autoInfo:SetVisible( true )
+		for k, v in ipairs( {
+			{ timeInS = LibK.TimeUnitMap.hours * 12,	mul = math.pow( 1.1, 4 ) },
+			{ timeInS = LibK.TimeUnitMap.days * 3,		mul = math.pow( 1.1, 3 ) },
+			{ timeInS = LibK.TimeUnitMap.weeks * 1,		mul = math.pow( 1.1, 2 ) },
+			{ timeInS = LibK.TimeUnitMap.weeks * 4,		mul = math.pow( 1.1, 1 ) },
+		} ) do
+			local line = self.listView:AddLine( )
+			local price = {
+				points 			= self.itemClass.Price.points and
+					math.floor( v.mul * v.timeInS * self.itemClass.Price.points / LibK.ConvertTimeUnits( 8, "weeks", "seconds" ) ),
+				premiumPoints 	= self.itemClass.Price.premiumPoints and
+					math.floor( v.mul * v.timeInS * self.itemClass.Price.premiumPoints / LibK.ConvertTimeUnits( 8, "weeks", "seconds" ) ),
+			}
+			line:updateTimespan( v.timeInS, price.points, price.premiumPoints )
+		end
+	else
+		for k, v in pairs( itemClass.Expiration ) do
+			line:updateTimespan( v.duration, v.points, v.premiumPoints )
+		end
 	end
-	
-	local day = 60 * 60 * 24
-	self.listView:AddSpan( day, 
-		itemClass.Price.points and itemClass.Price.points * mul( day ),
-		itemClass.Price.premiumPoints and itemClass.Price.premiumPoints * mul( day )
-	)
-	
-	local week = day * 7
-	self.listView:AddSpan( day, 
-		itemClass.Price.points and itemClass.Price.points * mul( week ),
-		itemClass.Price.premiumPoints and itemClass.Price.premiumPoints * mul( week )
-	)
-	
-	local month = week * 4
-	self.listView:AddSpan( month, 
-		itemClass.Price.points and itemClass.Price.points * mul( month ),
-		itemClass.Price.premiumPoints and itemClass.Price.premiumPoints * mul( month )
-	)
+end
+
+function PANEL:GetExpirationTable( )
+	local expirationTable = { }
+	for k, v in pairs( self.listView:GetLines( ) ) do
+		table.insert( expirationTable, v.expiryData )
+	end
+	return expirationTable
 end
 
 function PANEL:OnSave( )
-	local expirationsTable = { }
-	for k, v in pairs( self.listView:GetRows( ) ) do
-		table.insert( durationsTable, v.expiryData )
-	end
-	return expirationsTable
+	
 end
 
 vgui.Register( "DExpiryMenu", PANEL, "DFrame" )
@@ -351,6 +373,11 @@ function PANEL:Init( )
 		self:Close( )
 		self:OnSave( value, self.normalPrice:GetPrice( ), self.pricePremium:GetPrice( ) )
 	end
+end
+
+function PANEL:SetBasePrice( points, premiumPoints )
+	self.normalPrice:SetPrice( points )
+	self.pricePremium:SetPrice( premiumPoints )
 end
 
 function PANEL:Edit( duration, points, premiumPoints )

@@ -7,9 +7,9 @@ ItemExpiration.static.model = {
 	tableName = "ps2_itemexpiration",
 	fields = {
 		itemPersistenceId = "int",
-		duration = "int", --in seconds
-		points = "int",
-		premiumPoints = "int"
+		timespan = "int", --in seconds
+		points = "optKey", --not really optional key but INT NULL
+		premiumPoints = "optKey" --not really optional key but INT NULL
 	},
 	belongsTo = {
 		--Make sure we get removed when item gets removed
