@@ -52,7 +52,7 @@ function ExpiryController:buyItem( ply, itemClassName, currencyType, timespan )
 	return ps2Controller:isValidPurchase( ply, itemClassName )
 	:Then( function( )
 		local itemClass = Pointshop2.GetItemClassByName( itemClassName )
-		if not itemClass:IsExpiryItem( ) then
+		if not itemClass:IsExpiryClass( ) then
 			return Promise.Reject( "Item is not an expiry item" )
 		end
 		
@@ -95,4 +95,54 @@ function ExpiryController:buyItem( ply, itemClassName, currencyType, timespan )
 		self:startView( "Pointshop2View", "itemChanged", ply, item )
 		self:startView( "Pointshop2View", "displayItemAddedNotify", ply, item )
 	end )
+end
+
+local function checkItemExpiration( item )
+	if not item:IsExpiryItem( ) then
+		return
+	end
+	
+	if item:GetTimeLeft( ) > 0 then
+		return
+	end
+	
+	if item._expired then
+		return
+	end
+	
+	item._expired = true
+	
+	item:OnExpired( )
+	
+	ExpiryController:getInstance( ):notifyItemExpired( item:GetOwner( ), item )
+	Pointshop2Controller:getInstance( ):removeItemFromPlayer( item:GetOwner( ), item )
+end
+
+local function checkExpirations( ply )
+	for k, v in pairs( ply.PS2_Inventory:getItems( ) ) do
+		checkItemExpiration( v )
+	end
+	
+	for k, slot in pairs( ply.PS2_Slots ) do
+		if slot.itemId then
+			if KInventory.ITEMS[slot.itemId] then
+				checkItemExpiration( KInventory.ITEMS[slot.itemId] )
+			end
+		end
+	end
+end
+
+function ExpiryController:checkForExpiredItems( )
+	for k, v in pairs( player.GetAll( ) ) do
+		if v.PS2_Inventory and v.PS2_Slots then
+			checkExpirations( v )
+		end
+	end
+end
+hook.Add( "Think", "ExpiryExpireItems", function( )
+	ExpiryController:getInstance( ):checkForExpiredItems( )
+end )
+
+function ExpiryController:notifyItemExpired( ply, item )
+	self:startView( "Pointshop2View", "displayInformation", ply, "Your item " .. item:GetPrintName( ) .. " has expired and was removed from your inventory." )
 end

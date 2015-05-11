@@ -13,7 +13,7 @@ function ExpiryMixin:included( base_pointshop_item )
 	function base_pointshop_item:initialize( )
 		oldInitialize( self )
 		
-		if self.class:IsExpiryItem( ) then
+		if self.class:IsExpiryClass( ) then
 			table.insert(self.saveFields, "expiryData" )
 		end
 	end
@@ -35,8 +35,16 @@ function ExpiryMixin:GetTimeLeft( )
 	return self.expiryData.expires - os.time( )
 end
 
-function ExpiryMixin.static:IsExpiryItem( )
+function ExpiryMixin:IsExpiryItem( )
+	return self.expiryData != nil
+end
+
+function ExpiryMixin.static:IsExpiryClass( )
 	return self.ExpirationData != nil
+end
+	
+function ExpiryMixin:OnExpired( )
+
 end
 	
 function ExpiryMixin.static:IsPermanentPurchaseAllowed( )
