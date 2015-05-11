@@ -17,6 +17,22 @@ function ExpiryMixin:included( base_pointshop_item )
 			table.insert(self.saveFields, "expiryData" )
 		end
 	end
+	
+	local oldGetSellPrice = base_pointshop_item.GetSellPrice
+	function base_pointshop_item:GetSellPrice( ply )
+		if not self.expiryData then
+			return oldGetSellPrice( self, ply )
+		end
+		
+		local timeLeft = self:GetTimeLeft( )
+		local percTimeLeft = timeLeft / self.expiryData.timespan
+		
+		return math.floor( self.purchaseData.amount * percTimeLeft * Pointshop2.GetSetting( "Pointshop 2", "BasicSettings.SellRatio" ) ), self.purchaseData.currency		
+	end
+end
+
+function ExpiryMixin:GetTimeLeft( )
+	return self.expiryData.expires - os.time( )
 end
 
 function ExpiryMixin.static:IsExpiryItem( )

@@ -87,7 +87,8 @@ function ExpiryController:buyItem( ply, itemClassName, currencyType, timespan )
 	:Then( function( item )
 		item.expiryData = {
 			purchased = os.time( ),
-			expires = os.time( ) + timespan
+			expires = os.time( ) + timespan,
+			timespan = timespan
 		}
 		return item:save( )
 	end )
