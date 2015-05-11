@@ -81,7 +81,6 @@ function ExpiryController:buyItem( ply, itemClassName, currencyType, timespan )
 			return Promise.Reject( "Invalid timespan " + timespan )
 		end
 		
-		print( ply, itemClass, price, currencyType )
 		return ps2Controller:internalBuyItem( ply, itemClass, currencyType, price, true )
 	end )
 	:Then( function( item )
