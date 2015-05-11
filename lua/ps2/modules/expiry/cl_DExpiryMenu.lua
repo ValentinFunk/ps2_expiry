@@ -158,6 +158,7 @@ function PANEL:Init( )
 		menu:AddOption( "Edit", function( )
 			local frame = vgui.Create( "DExpiryMenu_SelectTimespan" )
 			frame:MakePopup( )
+			frame:Edit( line.expiryData.timespan, line.expiryData.points, line.expiryData.premiumPoints )
 			function frame.OnSave( frame, timespan, points, premiumPoints )
 				line:updateTimespan( timespan, points, premiumPoints )
 			end
@@ -213,7 +214,7 @@ function PANEL:SetItemClass( itemClass )
 	self.pointsPrice:SetText( self.itemClass.Price.points or " - " )
 	self.premiumPointsPrice:SetText( self.itemClass.Price.premiumPoints or " - " )
 	
-	if not itemClass.Expiration then
+	if not itemClass.ExpirationData then
 		self.autoInfo:SetVisible( true )
 		for k, v in ipairs( {
 			{ timeInS = LibK.TimeUnitMap.hours * 12,	mul = math.pow( 1.1, 4 ) },
@@ -231,8 +232,15 @@ function PANEL:SetItemClass( itemClass )
 			line:updateTimespan( v.timeInS, price.points, price.premiumPoints )
 		end
 	else
-		for k, v in pairs( itemClass.Expiration ) do
-			line:updateTimespan( v.duration, v.points, v.premiumPoints )
+		self.allowPermanent:SetChecked( false )
+		for k, v in pairs( itemClass.ExpirationData ) do
+			if v.timespan == 0 then
+				self.allowPermanent:SetChecked( true )
+				continue
+			end
+			
+			local line = self.listView:AddLine( )
+			line:updateTimespan( v.timespan, v.points, v.premiumPoints )
 		end
 	end
 end
@@ -241,6 +249,9 @@ function PANEL:GetExpirationTable( )
 	local expirationTable = { }
 	for k, v in pairs( self.listView:GetLines( ) ) do
 		table.insert( expirationTable, v.expiryData )
+	end
+	if self.allowPermanent:GetChecked( ) then
+		table.insert( expirationTable, { timespan = 0, points = 0, premiumPoints = 0 } )
 	end
 	return expirationTable
 end

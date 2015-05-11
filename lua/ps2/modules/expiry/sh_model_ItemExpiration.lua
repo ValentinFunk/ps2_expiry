@@ -16,7 +16,8 @@ ItemExpiration.static.model = {
 		ItemPersistence = {
 			class = "Pointshop2.ItemPersistence",
 			foreignKey = "itemPersistenceId",
-			onDelete = "CASCADE"
+			onDelete = "CASCADE",
+			noLoad = true
 		}
 	}
 }
