@@ -138,7 +138,7 @@ hook.Add( "PS2_InvItemIconSetItem", "expiryiconinv", function( panel, item )
 	end
 	
 	panel.expiryInfoPanel = vgui.Create( "DPanel", panel )
-	panel.expiryInfoPanel:Dock( TOP )
+	panel.expiryInfoPanel:Dock( BOTTOM )
 	panel.expiryInfoPanel:DockMargin( 0, 0, 0, 0 )
 	Derma_Hook( panel.expiryInfoPanel, "Paint", "Paint", "InnerPanel" )
 	panel.expiryInfoPanel:SetTall( 12 )
